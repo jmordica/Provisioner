@@ -46,7 +46,7 @@ class ProvisionerUtils {
         return "account/" . substr_replace(substr_replace($account_id, '/', 2, 0), '/', 5, 0);
     }
 
-    private static function strip_uri($uri) {
+    public static function strip_uri($uri) {
         // Then let's check in the URI (should be at the end of it)
         // Then explode the url
         $explode_uri = explode('/', $uri);
@@ -55,16 +55,23 @@ class ProvisionerUtils {
         return $explode_uri[$mac_index];
     }
 
-    public static function get_folder($brand, $model) {
+    private static function _get_brand_data($brand) {
         $base_folder = MODULES_DIR . $brand . "/";
-        $brand_data = json_decode(file_get_contents($base_folder . "brand_data.json"), true);
+        return json_decode(file_get_contents($base_folder . "brand_data.json"), true);
+    }
 
-        return $base_folder . $brand_data["folders"][$model];
+    public static function get_folder($brand, $model) {
+        $brand_data = ProvisionerUtils::_get_brand_data($brand);
+        return $brand_data[$model]["folder"];
+    }
+
+    public static function get_file_list($brand, $model) {
+        $brand_data = ProvisionerUtils::_get_brand_data($brand);
+        return $brand_data[$model]["config_files"];
     }
 
     // This function will determine weither the current request is a static file or not
-    // This must be adapted since we now use it when we knoe the brand
-    public static function is_static_file_request($ua, $uri, $model) {
+    public static function is_static_file($ua, $uri, $model) {
         $folder = null;
         $target = null;
 
@@ -72,7 +79,9 @@ class ProvisionerUtils {
         if (preg_match("/polycom/", $ua)) {
             $folder = ProvisionerUtils::get_folder("polycom", $model);
 
-            if (!preg_match("/[a-z0-9_]*\.cfg$/", $uri, $match_result))
+            if (preg_match("/0{12}\.cfg$/", $uri))
+                $target = "000000000000.cfg";
+            elseif (!preg_match("/[a-z0-9_]*\.cfg$/", $uri, $match_result))
                 $target = ProvisionerUtils::strip_uri($uri);
         }
 
@@ -80,6 +89,10 @@ class ProvisionerUtils {
             return false;
         else
             return $folder . $target;
+    }
+
+    public static function validate_arguments($argv) {
+        // TODO
     }
 }
 
